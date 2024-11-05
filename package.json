@@ -7,7 +7,8 @@
     "start": "node src/server.js",
     "test": "jest",
     "lint": "eslint src/** test/** --fix",
-    "format": "prettier --write src/** test/**"
+    "format": "prettier --write src/** test/**",
+    "migrate": "node src/migration.js"
   },
   "author": "",
   "license": "ISC",

@@ -475,3 +475,38 @@ describe('5. When updating car data', () => {
     });
   });
 });
+
+describe('6. When delete a car', () => {
+  let carToDelete;
+
+  beforeAll(async () => {
+    await pool.query('DROP TABLE IF EXISTS cars_items;');
+    await pool.query('DROP TABLE IF EXISTS cars;');
+
+    await runMigrations();
+
+    carToDelete = await CarService.create({
+      brand: 'Marca0X',
+      model: 'Teste0X',
+      plate: 'TST-0A88',
+      year: 2020,
+    });
+  });
+
+  test('should return status 204 when successfully delete a car', () => {
+    return request(app)
+      .delete(`${MAIN_ROUTE}/${carToDelete.id}`)
+      .then((res) => {
+        expect(res.status).toBe(204);
+      });
+  });
+
+  test('should return status 404 when attempting to delete a non-existent car', () => {
+    return request(app)
+      .delete(`${MAIN_ROUTE}/-1`)
+      .then((res) => {
+        expect(res.status).toBe(404);
+        expect(res.body.errors).toContain('car not found');
+      });
+  });
+});

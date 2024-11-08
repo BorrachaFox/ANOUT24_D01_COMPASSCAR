@@ -66,10 +66,21 @@ const updateCarController = async (req, res, next) => {
   }
 };
 
+const deleteCarController = async (req, res, next) => {
+  try {
+    await CarService.delete(req.params.id);
+    res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+};
+
+
 module.exports = {
   createCarController,
   addCarItemsController,
   getCarController,
   listCarController,
   updateCarController,
+  deleteCarController,
 };

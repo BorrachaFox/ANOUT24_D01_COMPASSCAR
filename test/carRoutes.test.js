@@ -8,7 +8,6 @@ const app = require('../src/app');
 const MAIN_ROUTE = '/api/v1/cars';
 
 let testCarData;
-let testCarData2;
 
 beforeAll(async () => {
   await pool.query('DROP TABLE IF EXISTS cars_items;');
@@ -20,13 +19,6 @@ beforeAll(async () => {
     brand: 'Marca',
     model: 'Modelo',
     plate: 'TST-0044',
-    year: 2018,
-  });
-
-  testCarData2 = await CarService.create({
-    brand: 'Marca',
-    model: 'Modelo',
-    plate: 'TST-1D23',
     year: 2018,
   });
 });
@@ -79,26 +71,25 @@ describe('1. When creating a car', () => {
 
   describe('Required fields validation', () => {
     // 400
-    test('should fail to create a car without a brand', () => {
+    test('should return status 404 and fail to create a car without a brand', () => {
       return testTemplate({ brand: null }, 'brand is required');
     });
 
-    test('should fail to create a car without a model', () => {
+    test('should return status 404 and fail to create a car without a model', () => {
       return testTemplate({ model: null }, 'model is required');
     });
 
-    test('should fail to create a car without a year', () => {
+    test('should return status 404 and fail to create a car without a year', () => {
       return testTemplate({ year: null }, 'year is required');
     });
 
-    test('should fail to create a car without a plate', () => {
+    test('should return status 404 and fail to create a car without a plate', () => {
       return testTemplate({ plate: null }, 'plate is required');
     });
   });
 
   describe('Invalid fields validation', () => {
-    // 400
-    test('should fail to create a car with an invalid plate format', () => {
+    test('should return status 404 and fail to create a car with an invalid plate format', () => {
       return testTemplate(
         { plate: 'AB$1234' },
         'plate must be in the correct format ABC-1C34',
@@ -110,7 +101,7 @@ describe('1. When creating a car', () => {
     const minValidCarYear = newCarYear - maxCarAge;
     const invalidYear = minValidCarYear - 1;
 
-    test('should fail to create a car with an invalid year', () => {
+    test('should return status 404 and fail to create a car with an invalid year', () => {
       return testTemplate(
         { year: invalidYear },
         `year must be between ${minValidCarYear} and ${newCarYear}`,
@@ -158,18 +149,18 @@ describe('2. When putting a car item', () => {
 
   describe('Required fields validation', () => {
     // 400
-    test('should fail to insert empty items', () => {
+    test('should return status 400 and fail to insert empty items', () => {
       return testTemplate(invalidData.empty, 'items is required');
     });
 
-    test('should fail to insert more than 5 items', () => {
+    test('should return status 400 and fail to insert more than 5 items', () => {
       return testTemplate(
         invalidData.moreThanFive,
         'items must be a maximum of 5',
       );
     });
 
-    test('should fail to insert repeated items', () => {
+    test('should return status 400 and fail to insert repeated items', () => {
       return testTemplate(
         invalidData.repeatedItems,
         'items cannot be repeated',
@@ -391,6 +382,95 @@ describe('4. When listing cars', () => {
           expect(res.body.count).toBe(0);
           expect(res.body.pages).toBe(0);
           expect(res.body.data).toEqual([]);
+        });
+    });
+  });
+});
+
+describe('5. When updating car data', () => {
+  const validData = {
+    brand: 'Marca01',
+    model: 'Modelo01',
+    plate: 'VAL-0D00',
+    year: 2018,
+  };
+
+  let carForTest;
+  let carForPlateCollision;
+
+  beforeAll(async () => {
+    carForTest = await CarService.create({
+      brand: 'Marca0X',
+      model: 'Teste0X',
+      plate: 'TST-0A88',
+      year: 2020,
+    });
+
+    carForPlateCollision = await CarService.create({
+      brand: 'Marca0X',
+      model: 'Teste0X',
+      plate: 'COL-0A88',
+      year: 2020,
+    });
+  });
+
+  test('should return status 204', () => {
+    return request(app)
+      .patch(`${MAIN_ROUTE}/${carForTest.id}`)
+      .send({ ...validData })
+      .then((res) => {
+        expect(res.status).toBe(204);
+      });
+  });
+
+  test('should return status 409 fail if plate is already in use', () => {
+    return request(app)
+      .patch(`${MAIN_ROUTE}/${carForTest.id}`)
+      .send({ plate: carForPlateCollision.plate })
+      .then((res) => {
+        expect(res.status).toBe(409);
+        expect(res.body.errors).toContain('car already registered');
+      });
+  });
+
+  test('should return status 404 when attempting to update a non-existent car', () => {
+    return request(app)
+      .patch(`${MAIN_ROUTE}/-1`)
+      .send({ plate: carForPlateCollision.plate })
+      .then((res) => {
+        expect(res.status).toBe(404);
+        expect(res.body.errors).toContain('car not found');
+      });
+  });
+
+  describe('Invalid fields validation', () => {
+    test('should return status 400 and fail when brand is provided without a model', () => {
+      return request(app)
+        .patch(`${MAIN_ROUTE}/${carForTest.id}`)
+        .send({ brand: 'sasad' })
+        .then((res) => {
+          expect(res.status).toBe(400);
+          expect(res.body.errors).toContain('model must also be informed');
+        });
+    });
+
+    test('should return status 400 and fail when year is out of range (2015 and 2025)', () => {
+      return request(app)
+        .patch(`${MAIN_ROUTE}/${carForTest.id}`)
+        .send({ year: 0 })
+        .then((res) => {
+          expect(res.status).toBe(400);
+          expect(res.body.errors).toContain('year must be between 2015 and 2025');
+        });
+    });
+
+    test('should return status 400 and fail when plate is in an incorrect format', () => {
+      return request(app)
+        .patch(`${MAIN_ROUTE}/${carForTest.id}`)
+        .send({ plate: 'asdsa' })
+        .then((res) => {
+          expect(res.status).toBe(400);
+          expect(res.body.errors).toContain('plate must be in the correct format ABC-1C34');
         });
     });
   });

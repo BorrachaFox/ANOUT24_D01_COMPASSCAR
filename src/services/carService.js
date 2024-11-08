@@ -2,6 +2,7 @@ const { pool } = require('../config/db');
 
 const DuplicateEntryError = require('../errors/DuplicateEntryError');
 const ValidationError = require('../errors/ValidationError');
+const NotFoundError = require('../errors/NotFoundError');
 
 const { isValidPlate } = require('../utils/carDataValidation/isValidPlate');
 const {
@@ -45,11 +46,52 @@ const createCarService = async (car) => {
     SELECT * FROM cars WHERE id = lAST_INSERT_ID();
   `);
 
-  return data;
+  return data[0];
+};
+
+const addCarItemsService = async (carId, items) => {
+  const errors = [];
+
+  const [carExist] = await pool.query(
+    `
+    SELECT * FROM cars WHERE id = ?; 
+  `,
+    [carId],
+  );
+
+  if (carExist.length === 0) throw new NotFoundError('car not found');
+
+  if (items.length === 0) errors.push('items is required');
+  if (items.length > 5) errors.push('items must be a maximum of 5');
+
+  const setItems = new Set(items);
+  if (setItems.size !== items.length) errors.push('items cannot be repeated');
+
+  if (errors.length > 0) {
+    throw new ValidationError(errors);
+  }
+
+  await pool.query(
+    `
+    DELETE FROM cars_items WHERE car_id = ?
+  `,
+    [carId],
+  );
+
+  items.forEach(async (item) => {
+    await pool.query(
+      `
+      INSERT INTO cars_items (name, car_id)
+      VALUES (?, ?)
+    `,
+      [item, carId],
+    );
+  });
 };
 
 const CarService = {
   create: createCarService,
+  addItem: addCarItemsService,
 };
 
 module.exports = { CarService };

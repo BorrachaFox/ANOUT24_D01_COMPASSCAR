@@ -7,21 +7,8 @@ const app = require('../src/app');
 
 const MAIN_ROUTE = '/api/v1/cars';
 
-const testCarData = {
-  id: 10000,
-  brand: 'Marca',
-  model: 'Modelo',
-  plate: 'TST-1D23',
-  year: 2018,
-};
-
-const testCarData2 = {
-  id: 20000,
-  brand: 'Marca',
-  model: 'Modelo',
-  plate: 'TST-0044',
-  year: 2018,
-};
+let testCarData;
+let testCarData2;
 
 beforeAll(async () => {
   await pool.query('DROP TABLE IF EXISTS cars_items;');
@@ -29,8 +16,19 @@ beforeAll(async () => {
 
   await runMigrations();
 
-  CarService.create(testCarData);
-  CarService.create(testCarData2);
+  testCarData = await CarService.create({
+    brand: 'Marca',
+    model: 'Modelo',
+    plate: 'TST-0044',
+    year: 2018,
+  });
+
+  testCarData2 = await CarService.create({
+    brand: 'Marca',
+    model: 'Modelo',
+    plate: 'TST-1D23',
+    year: 2018,
+  });
 });
 
 afterAll(async () => {
@@ -116,6 +114,65 @@ describe('When creating a car', () => {
       return testTemplate(
         { year: invalidYear },
         `year must be between ${minValidCarYear} and ${newCarYear}`,
+      );
+    });
+  });
+});
+
+describe('When put a car item', () => {
+  const validData = ['Ar condicionado', 'Trava Eletrica', 'Vidro Eletrico'];
+  const invalidData = {
+    empty: [],
+    moreThanFive: ['1', '2', '3', '4', '5', '6'],
+    repeatedItems: ['1', '1'],
+  };
+
+  const testTemplate = (data, errorMessage) => {
+    return request(app)
+      .put(`${MAIN_ROUTE}/${testCarData.id}/items`)
+      .send(data)
+      .then((res) => {
+        expect(res.status).toBe(400);
+        expect(res.body.errors).toContain(errorMessage);
+      });
+  };
+
+  test('should return status 204', () => {
+    return request(app)
+      .put(`${MAIN_ROUTE}/${testCarData.id}/items`)
+      .send(validData)
+      .then((res) => {
+        expect(res.status).toBe(204);
+      });
+  });
+
+  test('should return status 404 if car does not exist', () => {
+    return request(app)
+      .put(`${MAIN_ROUTE}/-1/items`)
+      .send(validData)
+      .then((res) => {
+        expect(res.status).toBe(404);
+        expect(res.body.errors).toContain('car not found');
+      });
+  });
+
+  describe('Required fields validation', () => {
+    // 400
+    test('should fail to insert empty items', () => {
+      return testTemplate(invalidData.empty, 'items is required');
+    });
+
+    test('should fail to insert more than 5 items', () => {
+      return testTemplate(
+        invalidData.moreThanFive,
+        'items must be a maximum of 5',
+      );
+    });
+
+    test('should fail to insert repeated items', () => {
+      return testTemplate(
+        invalidData.repeatedItems,
+        'items cannot be repeated',
       );
     });
   });

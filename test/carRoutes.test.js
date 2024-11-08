@@ -1,21 +1,36 @@
 const request = require('supertest');
 const { pool } = require('../src/config/db');
 const { CarService } = require('../src/services/carService');
+const { runMigrations } = require('../src/migration');
 
 const app = require('../src/app');
 
 const MAIN_ROUTE = '/api/v1/cars';
 
+const testCarData = {
+  id: 10000,
+  brand: 'Marca',
+  model: 'Modelo',
+  plate: 'TST-1D23',
+  year: 2018,
+};
+
+const testCarData2 = {
+  id: 20000,
+  brand: 'Marca',
+  model: 'Modelo',
+  plate: 'TST-0044',
+  year: 2018,
+};
+
 beforeAll(async () => {
-  await pool.query('DELETE FROM cars WHERE plate = "TST-1D23"');
-  await pool.query('DELETE FROM cars WHERE plate = "TST-0D00"');
-  CarService.create({
-    id: 10000,
-    brand: 'Marca',
-    model: 'Modelo',
-    plate: 'TST-1D23',
-    year: 2018,
-  });
+  await pool.query('DROP TABLE IF EXISTS cars_items;');
+  await pool.query('DROP TABLE IF EXISTS cars;');
+
+  await runMigrations();
+
+  CarService.create(testCarData);
+  CarService.create(testCarData2);
 });
 
 afterAll(async () => {

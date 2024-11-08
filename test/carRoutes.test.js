@@ -35,7 +35,7 @@ afterAll(async () => {
   await pool.end();
 });
 
-describe('When creating a car', () => {
+describe('1. When creating a car', () => {
   const validData = {
     brand: 'Marca01',
     model: 'Modelo01',
@@ -119,7 +119,7 @@ describe('When creating a car', () => {
   });
 });
 
-describe('When put a car item', () => {
+describe('2. When putting a car item', () => {
   const validData = ['Ar condicionado', 'Trava Eletrica', 'Vidro Eletrico'];
   const invalidData = {
     empty: [],
@@ -175,5 +175,66 @@ describe('When put a car item', () => {
         'items cannot be repeated',
       );
     });
+  });
+});
+
+describe('3. When getting car data by id', () => {
+  let carWithItems;
+  let carWithNoItems;
+  const carItems = ['Ar condicionado', 'Trava Eletrica', 'Video Eletrico'];
+
+  beforeAll(async () => {
+    carWithItems = await CarService.create({
+      brand: 'Marca0X',
+      model: 'Teste0X',
+      plate: 'TST-0X88',
+      year: 2020,
+    });
+
+    await CarService.addItem(carWithItems.id, carItems);
+
+    carWithNoItems = await CarService.create({
+      brand: 'Marca0X',
+      model: 'Teste0X',
+      plate: 'TST-0A88',
+      year: 2020,
+    });
+  });
+
+  test('should return status 200 and car data + [] for items', () => {
+    return request(app)
+      .get(`${MAIN_ROUTE}/${carWithNoItems.id}`)
+      .then((res) => {
+        expect(res.status).toBe(200);
+        expect(res.body.brand).toBe('Marca0X');
+        expect(res.body.model).toBe('Teste0X');
+        expect(res.body.plate).toBe('TST-0A88');
+        expect(res.body.year).toBe(2020);
+        expect(res.body).toHaveProperty('created_at');
+        expect(res.body.items).toEqual([]);
+      });
+  });
+
+  test('should return status 200 and car data + car items', () => {
+    return request(app)
+      .get(`${MAIN_ROUTE}/${carWithItems.id}`)
+      .then((res) => {
+        expect(res.status).toBe(200);
+        expect(res.body.brand).toBe('Marca0X');
+        expect(res.body.model).toBe('Teste0X');
+        expect(res.body.plate).toBe('TST-0X88');
+        expect(res.body.year).toBe(2020);
+        expect(res.body).toHaveProperty('created_at');
+        expect(res.body.items.sort()).toEqual(carItems.sort());
+      });
+  });
+
+  test('should return status 404 if car does not exist', () => {
+    return request(app)
+      .get(`${MAIN_ROUTE}/-1`)
+      .then((res) => {
+        expect(res.status).toBe(404);
+        expect(res.body.errors).toContain('car not found');
+      });
   });
 });

@@ -18,7 +18,17 @@ const addCarItemsController = async (req, res, next) => {
   }
 };
 
+const getCarController = async (req, res, next) => {
+  try {
+    const result = await CarService.getById(req.params.id);
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   createCarController,
   addCarItemsController,
+  getCarController,
 };

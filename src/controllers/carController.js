@@ -1,4 +1,34 @@
+/* eslint-disable camelcase */
 const { CarService } = require('../services/carService');
+
+const listCarController = async (req, res, next) => {
+  const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+  let limit = parseInt(req.query.limit, 10) || 5;
+
+  if (limit <= 0) {
+    limit = 5;
+  } else if (limit > 10) {
+    limit = 10;
+  }
+
+  const { year, final_plate, brand } = req.query;
+
+  const offset = (page - 1) * limit;
+
+  try {
+    const { count, data } = await CarService.list(offset, limit, {
+      year,
+      final_plate,
+      brand,
+    });
+
+    const pages = Math.ceil(count / limit);
+
+    res.status(200).json({ count, pages, data });
+  } catch (err) {
+    next(err);
+  }
+};
 
 const createCarController = async (req, res, next) => {
   try {
@@ -31,4 +61,5 @@ module.exports = {
   createCarController,
   addCarItemsController,
   getCarController,
+  listCarController,
 };

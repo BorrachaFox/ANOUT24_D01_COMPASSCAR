@@ -207,12 +207,31 @@ const updateCarService = async (carId, carData) => {
   );
 };
 
+const deleteCarService = async (carId) => {
+  await pool.query(
+    `
+    DELETE FROM cars_items WHERE car_id = ?;
+  `,
+    [carId],
+  );
+
+  const [deletedCar] = await pool.query(
+    `
+    DELETE FROM cars WHERE id = ?;
+  `,
+    [carId],
+  );
+
+  if (deletedCar.affectedRows === 0) throw new NotFoundError('car not found');
+};
+
 const CarService = {
   create: createCarService,
   addItem: addCarItemsService,
   getById: getCarService,
   list: listCarService,
   update: updateCarService,
+  delete: deleteCarService,
 };
 
 module.exports = { CarService };

@@ -113,10 +113,52 @@ const getCarService = async (carId) => {
   return data;
 };
 
+const listCarService = async (offset, limit, filters) => {
+  const queryFilters = [];
+  const params = [];
+
+  if (filters.year) {
+    queryFilters.push('year >= ?');
+    params.push(filters.year);
+  }
+  if (filters.final_plate) {
+    queryFilters.push('plate LIKE ?');
+    params.push(`%${filters.final_plate}`);
+  }
+  if (filters.brand) {
+    queryFilters.push('brand LIKE ?');
+    params.push(`%${filters.brand}%`);
+  }
+
+  const filterQuery = queryFilters.length
+    ? `WHERE ${queryFilters.join(' AND ')}`
+    : '';
+
+  const countQuery = `
+    SELECT COUNT(*) AS count FROM cars
+    ${filterQuery}
+  `;
+
+  const query = `
+    SELECT * FROM cars
+    ${filterQuery}
+    LIMIT ? OFFSET ?
+  `;
+
+  const [cars] = await pool.query(query, [...params, limit, offset]);
+  const [[{ count }]] = await pool.query(countQuery, [...params]);
+
+  return {
+    count,
+    data: cars,
+  };
+};
+
 const CarService = {
   create: createCarService,
   addItem: addCarItemsService,
   getById: getCarService,
+  list: listCarService,
 };
 
 module.exports = { CarService };

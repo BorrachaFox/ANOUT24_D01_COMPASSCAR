@@ -89,9 +89,34 @@ const addCarItemsService = async (carId, items) => {
   });
 };
 
+const getCarService = async (carId) => {
+  const [carData] = await pool.query(
+    `
+    SELECT * FROM cars WHERE id = ?;
+  `,
+    [carId],
+  );
+
+  if (carData.length === 0) throw new NotFoundError('car not found');
+
+  const [carItems] = await pool.query(
+    `
+    SELECT * FROM cars_items WHERE car_id = ?;
+  `,
+    [carId],
+  );
+
+  const carItemsName = carItems.map((item) => item.name);
+
+  const data = { ...carData[0], items: carItemsName };
+
+  return data;
+};
+
 const CarService = {
   create: createCarService,
   addItem: addCarItemsService,
+  getById: getCarService,
 };
 
 module.exports = { CarService };

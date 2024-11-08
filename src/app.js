@@ -1,10 +1,13 @@
 const express = require('express');
 const cors = require('cors');
+const carsRouter = require('./routes/carsRouter');
 
 const app = express();
 
 app.use(express.json());
 app.use(cors());
+
+app.use('/api/v1/cars', carsRouter);
 
 app.get('/', (req, res) => {
   res.status(200).json({ status: 'ok' });

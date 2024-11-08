@@ -154,11 +154,65 @@ const listCarService = async (offset, limit, filters) => {
   };
 };
 
+const updateCarService = async (carId, carData) => {
+  const errors = [];
+
+  const dataKeyValues = Object.keys(carData);
+  const dataValues = Object.values(carData);
+
+  const [carExist] = await pool.query(
+    `
+    SELECT * FROM cars WHERE id = ?; 
+  `,
+    [carId],
+  );
+
+  if (carExist.length === 0) throw new NotFoundError('car not found');
+
+  const [[plateExist]] = await pool.query(
+    `
+    SELECT plate FROM cars WHERE plate = ?; 
+    `,
+    [carData.plate],
+  );
+
+  if (plateExist) throw new DuplicateEntryError('car already registered');
+
+  if (carData.brand && !carData.model) {
+    errors.push('model must also be informed');
+  }
+  if (!isValidYear(carData.year, 10)) errors.push(invalidYearMessage(10));
+
+  if (carData.plate && !isValidPlate(carData.plate)) {
+    errors.push('plate must be in the correct format ABC-1C34');
+  }
+
+  if (errors.length > 0) {
+    throw new ValidationError(errors);
+  }
+
+  const updateQuery = dataKeyValues.length > 0
+    ? `SET ${dataKeyValues.map((key) => `${key} = ?`).join(', ')}`
+    : '';
+
+  if (updateQuery === '') return;
+
+  await pool.query(
+    `
+    UPDATE cars
+    ${updateQuery}
+    WHERE id = ?
+    `,
+    [...dataValues, carId],
+  );
+};
+
 const CarService = {
   create: createCarService,
   addItem: addCarItemsService,
   getById: getCarService,
   list: listCarService,
+  update: updateCarService,
 };
 
 module.exports = { CarService };

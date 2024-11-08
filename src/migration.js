@@ -8,7 +8,8 @@ const { pool } = require('./config/db');
 
 // Read all .js files in migrations folder;
 const readMigrationsFile = () => {
-  const migrationFiles = fs.readdirSync(path.join(__dirname, 'migrations'))
+  const migrationFiles = fs
+    .readdirSync(path.join(__dirname, 'migrations'))
     .filter((file) => file.endsWith('.js'))
     .sort();
 
@@ -18,21 +19,39 @@ const readMigrationsFile = () => {
 const migrationFiles = readMigrationsFile();
 
 // Run database commands in migration folder
-const runMigrations = async () => {
+const runMigrations = async (showState = false) => {
   const migrationPromise = migrationFiles.map((file) => {
     const migration = require(`./migrations/${file}`);
-    return migration.up()
+    return migration
+      .up()
       .then(() => {
-        console.log(`\x1b[32m+ Migration ${file} executed \x1b[0m`);
+        if (showState) {
+          console.log(`\x1b[32m+ Migration ${file} executed \x1b[0m`);
+        }
       })
       .catch((err) => {
-        console.error(`Failed migration ${file}: ${err.message}`);
+        if (showState) {
+          console.error(`Failed migration ${file}: ${err.message}`);
+        }
         process.exit(1);
       });
   });
 
   await Promise.all(migrationPromise);
+};
+
+const main = async () => {
+  await runMigrations(true);
   await pool.end();
 };
 
-runMigrations();
+module.exports = {
+  runMigrations,
+};
+
+if (require.main === module) {
+  main().catch((err) => {
+    console.error('Error running migrations:', err);
+    process.exit(1);
+  });
+}

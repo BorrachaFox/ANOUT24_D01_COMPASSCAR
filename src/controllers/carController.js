@@ -75,7 +75,6 @@ const deleteCarController = async (req, res, next) => {
   }
 };
 
-
 module.exports = {
   createCarController,
   addCarItemsController,
